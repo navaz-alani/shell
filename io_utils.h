@@ -9,6 +9,6 @@
 // failure in memory allocation has occurred.
 char *readline(FILE *istream, char delim);
 
-char **tokenize(char *s, char *delims);
+char **tokenize(char *s, char *delims, int *num_tokens);
 
 #endif

@@ -1,36 +1,51 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <signal.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/wait.h>
-#include "io_utils.h"
 
-int main(int argc, char **argv) {
-  char *shell_name = argv[0];
+#include "io_utils.h"
+#include "shell.h"
+#include "builtins.h"
+
+int read_eval(shell *sh) {
   char *input; char *program;
-  char **tokens;
+  char **tokens; int num_tokens;
+  // prompt printed to users
+  char prompt[PATH_MAX + 11];
+  // begin read-eval loop
   while (true) {
-    printf("$ ");
+    sprintf(prompt, "[pwd: %s]\n$ ", sh->pwd);
+    printf("%s", prompt);
     // get & verify input
     input = readline(stdin, '\n');
-    if (!input) {
-      printf("%s: error reading input\n", shell_name);
+    if (0 == input) {
+      printf("%s: error reading input\n", sh->name);
       return 1;
-    } else if (feof(stdin)) {
-      return 0;
+    } else if (feof(stdin)) return 0;
+    // tokenize input
+    tokens = tokenize(input, " ", &num_tokens);
+    // handle command if it is bultin
+    if (0 == handle_builtin(sh, tokens, num_tokens)) {
+      free(tokens); free(input);
+      // if the shell's `done` flag is set, exit
+      if (sh->done) return 0;
+      else continue;
     }
-    // process some quick cases for the input
-    if (!strcmp(input, ""))          { free(input); continue; }
-    else if (!strcmp(input, "quit")) { free(input); return 0; }
     // process the input
-    tokens = tokenize(input, " ");
     program = tokens[0];
     int rc = fork();
-    if (rc < 0)       printf("%s: fork fail\n", shell_name);
-    else if (rc == 0) execvp(program, tokens);
-    else              wait(NULL);
-    free(input);
-    free(tokens);
+    if (rc < 0)       printf("%s: fork fail\n", sh->name);
+    else if (0 == rc) {
+      execvp(program, tokens);
+      // exec failed - kill forked child
+      printf("%s exec fail - check program name\n", sh->name);
+      kill(getpid(), SIGTERM);
+    } else wait(NULL);
+    // cleanup
+    free(input); free(tokens);
   }
 }
