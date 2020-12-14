@@ -1,14 +1,13 @@
 CXX=gcc
-CXXFLAGS=-Wall -Werror
+CXXFLAGS=-Wall -Werror -g
 SOURCES=$(wildcard *.c)
 OBJECTS=${SOURCES:.c=.o}
 EXEC=shell
 
 $(EXEC): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $(EXEC)
-	rm -rf *.o
 
-%.o: %.cc
+%.o: %.c
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
 .PHONY: clean
