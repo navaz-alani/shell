@@ -3,10 +3,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-// realine reads from the given input stream, until EOF or the `delim` character
-// is encountered (whichever happens first). The caller is responsible for
-// freeing the returned character array. If the returned pointer is NULL, a
-// failure in memory allocation has occurred.
 char *readline(FILE *istream, char delim) {
   int ibuffcap = 1, ibufflen = 0;
   char *ibuff = malloc(ibuffcap * sizeof(char));
@@ -28,25 +24,59 @@ char *readline(FILE *istream, char delim) {
   return ibuff;
 }
 
-char **tokenize(char *s, char *delims) {
+int __grow_str_buff__(char ***buff, int new_cap) {
+  char **tmp = realloc(*buff, new_cap * sizeof(char *));
+  if (NULL == tmp) return -1;
+  *buff = tmp;
+  return 0;
+}
+
+// is_delim determines whether the character `c` is in the deliters `delims`.
+bool is_delim(char *delims, char c) {
+  while (*delims != '\0')
+    if (c == *(delims++)) return true;
+  return false;
+}
+
+char **esc_tokenize(char *s, char *delims, char esc, int *num_tokens) {
   int len = 0, cap = 1;
   char **tokens = malloc(cap * sizeof(char *));
-  char **tmp;
-  for (char *tok = strtok(s, delims); tok; tok = strtok(NULL, delims)) {
-    if (len == cap) {
-      cap *= 2;
-      tmp = realloc(tokens, cap * sizeof(char *));
-      if (!tmp) { free(tokens); return NULL; }
-      tokens = tmp;
+  bool escape = false;
+  char *tok_start = s;
+  while ('\0' != *s) {
+    if (*s == esc) escape = true;
+    else if (is_delim(delims, *s)) {
+      if (escape) {
+        escape = false;
+        ++s;
+      } else {
+        *s = '\0';
+        if (len == cap && __grow_str_buff__(&tokens, cap *= 2)) return NULL;
+        tokens[len++] = tok_start;
+        tok_start = ++s;
+      }
+      continue;
     }
-    tokens[len++] = tok;
+    ++s;
   }
-  if (len == cap) {
-    ++cap;
-    tmp = realloc(tokens, cap * sizeof(char *));
-    if (!tmp) { free(tokens); return NULL; }
-    tokens = tmp;
-  }
-  tokens[len] = NULL;
+  if (len == cap && __grow_str_buff__(&tokens, cap + 2)) return NULL;
+  tokens[len++] = tok_start;
+  tokens[len] = NULL; // terminate token array (for exec calls)
+  *num_tokens = len;
   return tokens;
+}
+
+char *__concat_str__(char **parts, int num_parts, char *sep) {
+  // first compute length of concatenated c-string
+  int joint_len = 0;
+  for (int i = 0; i < num_parts; ++i) joint_len += strlen(parts[i]);
+  joint_len += (num_parts - 1) * strlen(sep);
+  joint_len += 1; // for null byte
+  char *joint = malloc(joint_len * sizeof(char));
+  joint[0] = '\0'; // prepare `joint` for use with `strcat`
+  for (int i = 0; i < num_parts; ++i) {
+    strcat(joint, parts[i]);
+    if (i != num_parts - 1) strcat(joint, sep);
+  }
+  return joint;
 }
