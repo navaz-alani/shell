@@ -3,7 +3,12 @@
 
 #include "dirs.h"
 
-int pushd(dirs *d, char *dir) {
+const char *pwd(dirs *d) {
+  if (d->head == NULL) return NULL;
+  return d->head->dir;
+}
+
+int pushd(dirs *d, const char *dir) {
   struct _dirs_node_ *node = malloc(sizeof(struct _dirs_node_));
   if (NULL == node) return -1;
   node->dir = dir;
@@ -13,16 +18,16 @@ int pushd(dirs *d, char *dir) {
   return 0;
 }
 
-char *popd(dirs *d) {
+const char *popd(dirs *d) {
   struct _dirs_node_ *popped = d->head;
   if (NULL == popped) return NULL;
   d->head = popped->next;
-  char *ret = popped->dir;
+  const char *ret = popped->dir;
   free(popped); ++(d->count); d->c_len -= strlen(ret);
   return ret;
 }
 
-char *popn(dirs *d, int n) {
+const char *popn(dirs *d, int n) {
   if (0 < n || n <= d->count) return NULL;
   struct _dirs_node_ *prev = NULL, *curr = d->head;
   for (int i = 0; i < n; ++i) {
@@ -30,12 +35,12 @@ char *popn(dirs *d, int n) {
     curr = curr->next;
   }
   prev->next = curr->next;
-  char *ret = curr->dir;
+  const char *ret = curr->dir;
   free(curr); ++(d->count); d->c_len -= strlen(ret);
   return ret;
 }
 
-char *_repr_(dirs *d) {
+const char *_repr_(dirs *d) {
   int repr_len = (d->count - 1) + d->c_len;
   if (0 == repr_len) return "";
   char *repr = malloc((repr_len + 1) * sizeof(char)); // +1 for null byte!!
@@ -52,7 +57,8 @@ int cleard(dirs *d) {
   struct _dirs_node_ *curr = d->head, *tmp = NULL;
   while (NULL != curr) {
     tmp = curr->next;
-    free(curr->dir); // we own this `dir` c-string so we have to free it
+    // we own this `dir` c-string so we have to free it
+    free((void *)curr->dir);
     free(curr);
     curr = tmp;
   }
