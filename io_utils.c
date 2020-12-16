@@ -31,10 +31,9 @@ int __grow_str_buff__(char ***buff, int new_cap) {
   return 0;
 }
 
-// is_delim determines whether the character `c` is in the deliters `delims`.
-bool is_delim(char *delims, char c) {
-  while (*delims != '\0')
-    if (c == *(delims++)) return true;
+bool __is_in_str__(const char *str, char c) {
+  while (*str!= '\0')
+    if (c == *(str++)) return true;
   return false;
 }
 
@@ -42,23 +41,31 @@ char **esc_tokenize(char *s, char *delims, char esc, int *num_tokens) {
   int len = 0, cap = 1;
   char **tokens = malloc(cap * sizeof(char *));
   bool escape = false;
-  char *tok_start = s;
+  // initialize tok_start to first non-delim character
+  char *tok_start = NULL;
   while ('\0' != *s) {
     if (*s == esc) escape = true;
-    else if (is_delim(delims, *s)) {
+    else if (__is_in_str__(delims, *s)) {
       if (escape) {
+        if (NULL == tok_start) tok_start = s;
         escape = false;
         ++s;
       } else {
         *s = '\0';
+        if (NULL == tok_start) { ++s; continue; }
+        // here we grow using the doubling strategy for amortized O(n)
+        // time complexity
         if (len == cap && __grow_str_buff__(&tokens, cap *= 2)) return NULL;
         tokens[len++] = tok_start;
         tok_start = ++s;
       }
       continue;
+    } else if (NULL == tok_start) {
+      tok_start = s;
     }
     ++s;
   }
+  // here we grow by an absolute amount of 2
   if (len == cap && __grow_str_buff__(&tokens, cap + 2)) return NULL;
   tokens[len++] = tok_start;
   tokens[len] = NULL; // terminate token array (for exec calls)
@@ -79,4 +86,32 @@ char *__concat_str__(char **parts, int num_parts, char *sep) {
     if (i != num_parts - 1) strcat(joint, sep);
   }
   return joint;
+}
+
+int __l_strip_str__(const char *str, const char *strip) {
+  int i = 0;
+  while ('\0' != *(str + i))
+    if (!__is_in_str__(strip, *(str + i))) ++i;
+    else break;
+  return i;
+}
+
+int __r_strip_str__(const char *str, const char *strip) {
+  int i = strlen(str) - 1;
+  while (i >= 0)
+    if (!__is_in_str__(strip, *(str + i))) --i;
+    else break;
+  if (i == -1) return 0;
+  return i;
+}
+
+char *__strip_str__(char *str, const char *strip) {
+  // do not need to modify all of the right strip characters to null bytes, just
+  // the first one
+  int l_str_len = __l_strip_str__(str, strip);
+  int r_str_len = __r_strip_str__(str, strip);
+  // check if whole string is stripped
+  if (r_str_len < l_str_len) { *str = '\0'; return str; }
+  *(str + __r_strip_str__(str, strip)) = '\0';
+  return str + __l_strip_str__(str, strip);
 }
