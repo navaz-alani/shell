@@ -2,6 +2,7 @@
 #define _IO_UTILS_H_
 
 #include <stdio.h>
+#include <stdbool.h>
 
 // realine reads from the given input stream, until EOF or the `delim` character
 // is encountered (whichever happens first). The caller is responsible for
@@ -13,7 +14,7 @@ char *readline(FILE *istream, char delim);
 // delimiters `delim`. It escapes occurrences of the `delim` if preceeded by the
 // escape character `esc`. The returned array of c-strings is dynamically
 // allocated and the caller is responsible for freeing the memory.
-char **esc_tokenize(char *s, char* delims, char esc, int *num_tokens);
+char **esc_tokenize(char *s, const char* delims, const char esc, int *num_tokens);
 
 // `__grow_str_buff__` grows the given c-string array to have `new_cap`
 // capacity. A non-zero return value indicates that there was an error while
